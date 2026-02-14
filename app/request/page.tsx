@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BottomSheetSelect from "../../components/BottomSheetSelect";
 
+export const dynamic = "force-dynamic";
+
 type ServiceItem = {
     id: number;
     title: string;

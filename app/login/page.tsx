@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
+export const dynamic = "force-dynamic";
+
 const roleHome = (roles: string[]) => {
     if (roles.includes("ADMIN")) return "/admin/users";
     if (roles.includes("EXPERT")) return "/requests";
