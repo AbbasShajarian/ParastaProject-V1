@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BottomSheetSelect from "../../components/BottomSheetSelect";
 
@@ -26,7 +26,7 @@ type PatientItem = {
     nationalCode?: string | null;
 };
 
-export default function RequestPage() {
+function RequestPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -528,5 +528,13 @@ export default function RequestPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function RequestPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen" /> }>
+            <RequestPageContent />
+        </Suspense>
     );
 }

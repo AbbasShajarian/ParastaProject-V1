@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
@@ -14,7 +14,7 @@ const roleHome = (roles: string[]) => {
     return "/dashboard";
 };
 
-export default function LoginPage() {
+function LoginPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [form, setForm] = useState({ phone: "", password: "", otp: "" });
@@ -168,5 +168,13 @@ export default function LoginPage() {
                 </p>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen" /> }>
+            <LoginPageContent />
+        </Suspense>
     );
 }
