@@ -38,12 +38,16 @@ async function main() {
                 },
             });
             console.log(`✅ User created: ${seed.phone}`);
-        } else if (!user.password) {
+        } else {
             await prisma.user.update({
                 where: { id: user.id },
-                data: { password: hashedPassword },
+                data: {
+                    password: hashedPassword,
+                    firstName: seed.firstName,
+                    lastName: seed.lastName,
+                },
             });
-            console.log(`✅ Password set: ${seed.phone}`);
+            console.log(`✅ User updated: ${seed.phone}`);
         }
 
         for (const roleName of seed.roles) {
