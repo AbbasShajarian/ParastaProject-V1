@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int        @id @default(autoincrement())
+  phone     String     @unique
+  password  String?
+  nationalCode String? @unique
+  firstName String?
+  lastName  String?
+  status    String     @default("ACTIVE")
+
+  roles     UserRole[]
+  otps      Otp[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requestLogs     RequestLog[] @relation("RequestLogActor")
+  patientLogs     PatientLog[] @relation("PatientLogActor")
+  userLogs        UserLog[]    @relation("UserLogActor")
+  userLogsTarget  UserLog[]    @relation("UserLogTarget")
+  patientRequesters PatientRequester[]
+
+  assignedCaregiverRequests Request[] @relation("AssignedCaregiver")
+  assignedExpertRequests    Request[] @relation("AssignedExpert")
+  currentOwnerRequests      Request[] @relation("CurrentOwner")
+  lastActionRequests        Request[] @relation("LastAction")
+  verifiedDocuments         PatientDocument[] @relation("VerifiedBy")
+}
+
+model Patient {
+  id                 Int                         @id @default(autoincrement())
+  nationalCode       String                      @unique
+  firstName          String?
+  lastName           String?
+  fullName           String?
+  birthDate          DateTime?
+  age                Int?
+  gender             String?
+  medicalNotes       String?
+  conditions         String?
+  verificationStatus String   @default("PENDING")
+
+  requesters PatientRequester[]
+  requests   Request[]
+  documents  PatientDocument[]
+  logs       PatientLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PatientRequester {
+  id            Int      @id @default(autoincrement())
+  patientId     Int
+  userId        Int?
+  phone         String
+  score         Float    @default(0)
+  totalRequests Int      @default(0)
+  lastRequestAt DateTime?
+  isPrimary     Boolean  @default(false)
+  isSecondary   Boolean  @default(false)
+  historyAccessGranted Boolean @default(false)
+  primaryLockedAt   DateTime?
+  secondaryLockedAt DateTime?
+
+  patient   Patient @relation(fields: [patientId], references: [id])
+  user      User?   @relation(fields: [userId], references: [id])
+  requests  Request[]
+  documents PatientDocument[] @relation("UploadedBy")
+  requestLogs RequestLog[] @relation("RequestLogRequester")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([patientId, phone])
+  @@unique([patientId, userId])
+  @@index([phone])
+}
+
+model ServiceCategory {
+  id        Int      @id @default(autoincrement())
+  title     String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+
+  items ServiceItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ServiceItem {
+  id          Int      @id @default(autoincrement())
+  categoryId  Int
+  title       String
+  price       Int?
+  isActive    Boolean  @default(true)
+
+  category ServiceCategory @relation(fields: [categoryId], references: [id])
+  requests Request[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Request {
+  id            Int          @id @default(autoincrement())
+  patientId     Int
+  requesterId   Int
+  serviceItemId Int
+  status        String @default("NEW")
+  city          String?
+  time          String?
+  notes         String?
+
+  assignedCaregiverId Int?
+  assignedExpertId    Int?
+  currentOwnerUserId  Int?
+  lastActionByUserId  Int?
+  supportType         String?
+  docUploadToken      String?   @unique
+  docUploadExpiresAt  DateTime?
+
+  patient   Patient          @relation(fields: [patientId], references: [id])
+  requester PatientRequester @relation(fields: [requesterId], references: [id])
+  serviceItem ServiceItem    @relation(fields: [serviceItemId], references: [id])
+
+  assignedCaregiver User? @relation("AssignedCaregiver", fields: [assignedCaregiverId], references: [id])
+  assignedExpert    User? @relation("AssignedExpert", fields: [assignedExpertId], references: [id])
+  currentOwner      User? @relation("CurrentOwner", fields: [currentOwnerUserId], references: [id])
+  lastActionBy      User? @relation("LastAction", fields: [lastActionByUserId], references: [id])
+
+  logs RequestLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([supportType])
+}
+
+model PatientDocument {
+  id                 Int            @id @default(autoincrement())
+  patientId          Int
+  type               String
+  title              String?
+  doctorName         String?
+  visitDate          DateTime?
+  visitReason        String?
+  visitLocation      String?
+  notes              String?
+  mimeType           String
+  size               Int
+  data               Bytes
+  isCompressed       Boolean        @default(false)
+  originalSize       Int?
+  uploadedByRequesterId Int?
+  verifiedByUserId   Int?
+  status             String @default("PENDING")
+
+  patient    Patient           @relation(fields: [patientId], references: [id])
+  uploadedBy PatientRequester? @relation("UploadedBy", fields: [uploadedByRequesterId], references: [id])
+  verifiedBy User?             @relation("VerifiedBy", fields: [verifiedByUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([status])
+}
+
+model RequestLog {
+  id               Int      @id @default(autoincrement())
+  requestId        Int
+  actorUserId      Int?
+  actorRequesterId Int?
+  action           String
+  payload          String?
+
+  request     Request          @relation(fields: [requestId], references: [id])
+  actorUser   User?            @relation("RequestLogActor", fields: [actorUserId], references: [id])
+  actorRequester PatientRequester? @relation("RequestLogRequester", fields: [actorRequesterId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([requestId])
+}
+
+model PatientLog {
+  id          Int      @id @default(autoincrement())
+  patientId   Int
+  actorUserId Int?
+  action      String
+  payload     String?
+
+  patient   Patient @relation(fields: [patientId], references: [id])
+  actorUser User?   @relation("PatientLogActor", fields: [actorUserId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([patientId])
+}
+
+model UserLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  actorUserId Int?
+  action      String
+  payload     String?
+
+  user      User @relation("UserLogTarget", fields: [userId], references: [id])
+  actorUser User? @relation("UserLogActor", fields: [actorUserId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+
+  users UserRole[]
+}
+
+model UserRole {
+  id     Int  @id @default(autoincrement())
+
+  userId Int
+  roleId Int
+
+  user   User @relation(fields: [userId], references: [id])
+  role   Role @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId])
+}
+
+model Otp {
+  id        Int      @id @default(autoincrement())
+  phone     String
+  codeHash  String
+  purpose   String   @default("login")
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([phone])
+}
